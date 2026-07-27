@@ -1,0 +1,14 @@
+.DS_Store
+
+# XcodeGen が生成するもの(project.yml から再生成できる)
+/Shippitsu.xcodeproj/
+/Generated/
+
+# ビルド中間生成物
+/DerivedData/
+/.build/
+
+# ユーザー固有の Xcode 設定
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
