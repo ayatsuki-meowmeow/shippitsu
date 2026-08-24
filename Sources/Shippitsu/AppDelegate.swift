@@ -5,6 +5,24 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
   private var mainWindow: NSWindow?
 
+  /// エントリポイント。`@main` は型が独自の `static func main()` を持つ場合そちらを呼び、
+  /// AppKit 既定の `NSApplicationMain` ベースの実装(nib 経由でデリゲートを生成する)を使わない。
+  /// 本プロジェクトは Storyboard / XIB を使わない方針(2-2)であり `NSMainNibFile` を
+  /// Info.plist に設定していないため、既定実装では `NSApp.delegate` が nil のままになり、
+  /// `applicationDidFinishLaunching` が一度も呼ばれずウィンドウもメニューも生成されない。
+  /// そのため `NSApplication` の初期化とデリゲート設定をここで明示的に行う。
+  static func main() {
+    let app = NSApplication.shared
+    // NSApplication.delegate は weak 参照。ここでローカル変数として保持することで、
+    // 直後の代入直後に解放されるのを防ぐ。app.run() はアプリ終了まで返らないため、
+    // このローカル変数のスコープがアプリの生存期間全体をカバーする。
+    let delegate = AppDelegate()
+    app.delegate = delegate
+    // Dock とメニューバーに出る通常のアプリとして扱う。
+    app.setActivationPolicy(.regular)
+    app.run()
+  }
+
   func applicationDidFinishLaunching(_ notification: Notification) {
     let appName: String = Self.resolveDisplayName()
     NSApp.mainMenu = MainMenu.make(appName: appName)
