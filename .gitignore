@@ -12,3 +12,6 @@
 xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
+
+# Claude Code のスキル定義(~/skills への symlink でローカル管理する)
+/.claude/skills/
