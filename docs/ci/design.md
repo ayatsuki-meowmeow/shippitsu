@@ -125,7 +125,7 @@ issue #16 に「ランナーの macOS / Xcode バージョンが `deploymentTarg
 | `xcodegen` | ランナーに**プリインストールされていない**。導入が必要 | 同 Readme の導入済みソフトウェア一覧 |
 | `swiftlint` | ランナーに**プリインストールされていない**。導入が必要 | 同上 |
 | `mint` | ランナーに**プリインストールされていない**。導入が必要（D-2 で Mint を採用したため CI 側にも導入ステップが要る） | 同上 |
-| `swift-format` | Xcode 26 のツールチェーンに同梱されており `xcrun swift-format` で利用できる見込み（ローカルと同じ経路）。**⚠ ランナー上での実在は初回実行で確認する**（下記の注意を参照） | ローカル実測 6.3.0 / 未検証 |
+| `swift-format` | Xcode 26 のツールチェーンに同梱されており `xcrun swift-format` で利用できる。**2026-08-26 の初回 CI 実行でランナー上の実在を確認済み**（`xcrun swift-format --version` → `6.3.0`。ローカルと一致） | ローカル・ランナーとも 6.3.0 |
 | Homebrew | プリインストール済み（6.0.13）。`xcodegen` / `swiftlint` の導入経路として使える | 同 Readme |
 
 > ⚠ **`swift-format` の同名別物に注意。** ランナーには「**SwiftFormat 0.62.1**」がプリインストールされているが、これは Nick Lockwood 版の `swiftformat` であり、本プロジェクトが使う **Apple の `swift-format`**（`xcrun swift-format`、ローカル 6.3.0）とは**別のツール**である。設定ファイルもルールも互換性がない。CI で誤って前者を呼ぶと、整形差分の判定が `docs/scaffold/design.md` D-5 / D-10 の意図と食い違う。**必ず `xcrun swift-format` を使う。**
