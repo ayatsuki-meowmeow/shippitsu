@@ -1,0 +1,90 @@
+name: CI
+
+# 実行タイミングは docs/ci/design.md S-1 / D-1 による。
+# paths-ignore による除外は意図的に行わない（ドキュメントのみの PR でも走らせる）。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ⚠ このジョブ名がそのまま必須チェックの context になる（docs/ci/impl.md 2-3）。
+  #    改名するとブランチ保護が「報告されないチェック」を待ち続け、全 PR がマージ不能になる。
+  #    改名する場合はブランチ保護の設定も同時に更新すること。
+  verify:
+    name: verify
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      # Xcode のバージョン固定（docs/ci/impl.md 2-1）。
+      # xcodebuild と xcrun の両方がこの変数を参照するため、
+      # xcrun swift-format も同じ Xcode のツールチェーンから解決される。
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mint のキャッシュ。cache/restore と cache/save を分けているのは、
+      # 統合版がジョブ成功時にしか保存せず、lint やテストが落ちた回で
+      # キャッシュを失ってしまうため（docs/ci/impl.md 2-5）。
+      - name: Restore Mint cache
+        id: mint-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.mint
+          key: mint-${{ runner.os }}-xcode26.6-${{ hashFiles('Mintfile') }}
+          restore-keys: |
+            mint-${{ runner.os }}-xcode26.6-
+
+      # Mint 本体はランナーにプリインストールされていない。
+      - name: Install Mint
+        run: brew install mint
+
+      # Mintfile に固定したバージョンの SwiftLint / XcodeGen を導入する。
+      - name: Bootstrap Mint packages
+        run: mint bootstrap --link
+
+      - name: Add Mint bin to PATH
+        run: echo "$HOME/.mint/bin" >> "$GITHUB_PATH"
+
+      # 後続の検証が失敗してもキャッシュを保存する（2-5）。
+      - name: Save Mint cache
+        if: always() && steps.mint-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.mint
+          key: ${{ steps.mint-cache.outputs.cache-primary-key }}
+
+      # 失敗時の切り分け材料をログに残す（docs/ci/design.md NFR-1）。
+      # PATH が通った後でなければ意味がないため、この位置に置く。
+      - name: Show tool versions
+        run: |
+          xcodebuild -version
+          xcrun swift-format --version
+          swiftlint --version
+          xcodegen --version
+
+      # 以降は docs/scaffold/impl.md 3 章の早見表と同一のコマンド（FR-3）。
+      - name: Check formatting (swift-format)
+        run: xcrun swift-format lint --strict --recursive Sources Tests
+
+      - name: Lint (SwiftLint)
+        run: swiftlint lint --strict Sources Tests
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build
+        run: xcodebuild -project Shippitsu.xcodeproj -scheme Shippitsu -configuration Debug -derivedDataPath DerivedData build
+
+      - name: Test
+        run: xcodebuild -project Shippitsu.xcodeproj -scheme Shippitsu -destination 'platform=macOS' -derivedDataPath DerivedData test
